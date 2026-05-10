@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -113,7 +113,7 @@ class TestProductModel(unittest.TestCase):
         found_product = Product.find(product.id)
         self.assertEqual(found_product.id, product.id)
         self.assertEqual(found_product.name, product.name)
-        self.assertEqual(found_product.description, product.desc
+        self.assertEqual(found_product.description, product.description)
         self.assertEqual(found_product.price, product.price)
         self.assertEqual(found_product.available, product.available)
         self.assertEqual(found_product.category, product.category)
@@ -123,7 +123,6 @@ class TestProductModel(unittest.TestCase):
         product.id = None
         product.create()
         self.assertIsNotNone(product.id)
-        #original_id = product.id
         product_creado = Product.find(product.id)
         product.description = "Hola mundo"
         product.update()
@@ -164,7 +163,68 @@ class TestProductModel(unittest.TestCase):
         for product in found:
             self.assertEqual(product.name, name)
 
+    def test_find_by_availability(self):
+        """It should Find Products by Availability"""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+        available = products[0].available
+        count = len([product for product in products if product.available == available])
+        found = Product.find_by_availability(available)
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(product.available, available)
+
+    def test_find_by_category(self):
+        """It should Find Products by Category"""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+        category = products[0].category
+        count = len([product for product in products if product.category == category])
+        found = Product.find_by_category(category)
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(product.category, category)
+
+    def test_error_update_a_product(self):
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        self.assertIsNotNone(product.id)
+        product_creado = Product.find(product.id)
+        product.id = None
+        product.description = "Hola mundo"
+        self.assertRaises(DataValidationError, product.update)
+
+    def test_deserialize_a_product(self):
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        data = product.serialize()
+        data["available"] = None
+        with self.assertRaises(DataValidationError): product.deserialize(data)
+
+    def test_deserialize_typeerror(self):
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        data = product.serialize()
+        data["price"] = None
+        with self.assertRaises(DataValidationError): product.deserialize(data)
+
+    def test_find_by_price(self):
+        """It should Find Products by Price"""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+        price = products[0].price
+        count = len([product for product in products if product.price == price])
+        found = Product.find_by_price(str(price))
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(product.price, price)
 
 
-        
+
 
